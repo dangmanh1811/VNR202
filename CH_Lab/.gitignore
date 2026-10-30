@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.chrome-preview/
+.edge-preview/
+*-preview.png
+
+.vercel
+.env*
+.simulated-students.json
+.simulated-students.stop
+simulated-students.log
+simulated-students-error.log

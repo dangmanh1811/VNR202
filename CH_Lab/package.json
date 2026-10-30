@@ -1,0 +1,28 @@
+{
+  "name": "vnr202-interactive-classroom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server/dev.js",
+    "dev:lan": "node server/dev.js",
+    "dev:online": "vite --host 0.0.0.0",
+    "dev:ui": "vite --host 0.0.0.0",
+    "lan:server": "node server/lan.js",
+    "test:lan": "node --test server/lan.test.js server/buzzer.test.js",
+    "test:online": "node --test server/supabase-migration.test.js",
+    "simulate:students": "node server/simulate-students.js",
+    "simulate:students:stop": "node server/simulate-students.js --stop",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "vite": "^8.3.1"
+  }
+}

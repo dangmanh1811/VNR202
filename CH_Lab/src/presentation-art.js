@@ -1,0 +1,118 @@
+const genevaArticle = 'https://avalon.law.yale.edu/20th_century/inch001.asp';
+const heathTelegram = 'https://history.state.gov/historicaldocuments/frus1952-54v13p2/d1082';
+const settlementReport = 'https://history.state.gov/historicaldocuments/frus1955-57v01/d210';
+
+export const artworks = [
+  {
+    title: 'Hiệp định Giơnevơ 1954',
+    category: 'Bối cảnh · Đình chỉ chiến sự · Tập kết quân đội',
+    imageUrl: '/vnr-gallery/01-geneva.png',
+    imageAlt: 'Poster lớp học về Hiệp định Giơnevơ và vĩ tuyến 17',
+    note: 'Hiệp định Giơnevơ năm 1954 tạo khung pháp lý cho việc đình chỉ chiến sự ở Việt Nam, tập kết quân đội và mở thời hạn để thường dân chuyển vùng cư trú.',
+    points: [
+      'Hiệp định được ký ngày 21/7/1954, sau chiến thắng Điện Biên Phủ.',
+      'Hai bên tập kết quân đội theo vĩ tuyến 17, lấy sông Bến Hải làm ranh giới quân sự.',
+      'Trong thời hạn chuyển quân, thường dân được quyền chọn nơi cư trú.',
+    ],
+    sourceLabel: 'Hiệp định đình chỉ chiến sự ở Việt Nam (1954)',
+    sourceUrl: genevaArticle,
+  },
+  {
+    title: 'Điều 14(d)',
+    category: 'Cơ sở pháp lý cho quyền chuyển vùng',
+    imageUrl: '/vnr-gallery/02-dieu-14d.png',
+    imageAlt: 'Poster lớp học về Điều 14(d)',
+    note: 'Điều 14(d) là điều khoản then chốt: thường dân muốn chuyển sang vùng bên kia phải được chính quyền địa phương cho phép và giúp đỡ.',
+    points: [
+      'Quyền chuyển vùng gắn với thời hạn tập kết, không phải di cư vô hạn.',
+      'Chính quyền hai bên có trách nhiệm tạo điều kiện cho thường dân thực hiện quyền này.',
+      'Đây là điểm tựa pháp lý mà các bên khai thác khi tổ chức hoặc vận động di cư.',
+    ],
+    sourceLabel: 'Hiệp định đình chỉ chiến sự ở Việt Nam (1954), Điều 14(d)',
+    sourceUrl: genevaArticle,
+  },
+  {
+    title: '300 ngày chuyển quân',
+    category: 'Thời hạn tối đa theo Hiệp định',
+    imageUrl: '/vnr-gallery/03-300-ngay.png',
+    imageAlt: 'Poster lớp học về thời hạn 300 ngày',
+    note: 'Hiệp định quy định thời hạn tối đa 300 ngày để hoàn thành tập kết và chuyển quân. Đây cũng là cửa sổ để thường dân chuyển vùng theo Điều 14(d).',
+    points: [
+      '300 ngày là hạn chót của việc tập kết lực lượng, không phải mốc định cư.',
+      'Cuộc di cư Bắc – Nam diễn ra chủ yếu trong giai đoạn 1954–1955.',
+      'Hết thời hạn, khung pháp lý chuyển vùng theo Hiệp định không còn như lúc đầu.',
+    ],
+    sourceLabel: 'Hiệp định đình chỉ chiến sự ở Việt Nam (1954)',
+    sourceUrl: genevaArticle,
+  },
+  {
+    title: 'Từ Bắc vào Nam',
+    category: 'Hướng di chuyển chủ yếu 1954–1955',
+    imageUrl: '/vnr-gallery/04-bac-nam.png',
+    imageAlt: 'Poster lớp học về hướng di cư Bắc vào Nam',
+    note: 'Sau Hiệp định, một bộ phận lớn dân cư miền Bắc di chuyển vào miền Nam. Đây là chiều di cư được bài học tập trung phân tích.',
+    points: [
+      'Có người đi theo gia đình, tôn giáo, sinh kế hoặc lập trường chính trị.',
+      'Cũng có dòng người từ Nam ra Bắc, nhưng quy mô nhỏ hơn và không phải trọng tâm bài này.',
+      'Không nên quy mọi trường hợp vào một nguyên nhân duy nhất.',
+    ],
+    sourceLabel: 'Báo cáo về định cư người di cư (1955)',
+    sourceUrl: settlementReport,
+  },
+  {
+    title: 'Passage to Freedom',
+    category: 'Tàu biển · Máy bay · Hải quân Mỹ',
+    imageUrl: '/vnr-gallery/05-tau-bay.png',
+    imageAlt: 'Poster lớp học về chiến dịch Passage to Freedom',
+    note: 'Operation Passage to Freedom là chiến dịch Hải quân Mỹ tham gia vận chuyển người di cư từ miền Bắc vào miền Nam. Tàu biển đảm nhận phần lớn số người được chuyên chở.',
+    points: [
+      'Mỹ và Pháp dùng tàu biển và máy bay để tổ chức vận chuyển.',
+      'Việc chuyên chở chỉ là bước đầu: đến nơi rồi mới bắt đầu bài toán định cư.',
+      'Tên chiến dịch phản ánh cách phía Mỹ kể câu chuyện di cư.',
+    ],
+    sourceLabel: 'Điện tín Donald Heath, ngày 23/7/1954',
+    sourceUrl: heathTelegram,
+  },
+  {
+    title: 'Tuyên truyền và lời hứa',
+    category: 'Tôn giáo · Tài sản · An toàn · Đất đai',
+    imageUrl: '/vnr-gallery/06-tuyen-truyen.png',
+    imageAlt: 'Poster lớp học về tuyên truyền vận động di cư',
+    note: 'Một số hoạt động tuyên truyền khơi gợi lo ngại về tự do tôn giáo, quyền sở hữu tài sản và sự an toàn, đồng thời hứa hỗ trợ nhà ở, đất đai và sinh kế.',
+    points: [
+      'Chính quyền Diệm đặc biệt quan tâm thu hút người Công giáo và các nhóm chống cộng.',
+      'Lời hứa về đất đai và điều kiện định cư được dùng để vận động, nhưng thực hiện gặp nhiều khó khăn.',
+      'Tuyên truyền có thể ảnh hưởng lựa chọn, nhưng không giải thích hết mọi động cơ cá nhân.',
+    ],
+    sourceLabel: 'Điện tín Donald Heath, ngày 23/7/1954',
+    sourceUrl: heathTelegram,
+  },
+  {
+    title: 'Gần một triệu người',
+    category: 'Quy mô 1954–1955',
+    imageUrl: '/vnr-gallery/07-mot-trieu.png',
+    imageAlt: 'Poster lớp học về quy mô gần một triệu người di cư',
+    note: 'Các tài liệu lịch sử thường nêu khoảng 800.000 đến gần một triệu người di cư từ miền Bắc vào miền Nam. Con số cụ thể thay đổi tùy nguồn và cách thống kê.',
+    points: [
+      'Dùng mức “gần 1 triệu” để khái quát, không biến một con số thành chân lý tuyệt đối.',
+      'Quy mô lớn biến di cư thành vấn đề chính trị, xã hội và định cư, không chỉ là chuyện đi đường.',
+      'Cần đối chiếu nguồn khi gặp các ước lượng khác nhau.',
+    ],
+    sourceLabel: 'Báo cáo về định cư người di cư (1955)',
+    sourceUrl: settlementReport,
+  },
+  {
+    title: 'Hai mặt cần phân biệt',
+    category: 'Mục tiêu chính quyền ⇄ Động cơ người dân',
+    imageUrl: '/vnr-gallery/08-danh-gia.png',
+    imageAlt: 'Poster lớp học về cách đánh giá chính sách di cư 1954',
+    note: 'Mỹ và chính quyền Diệm có mục tiêu chính trị khi hỗ trợ và tổ chức di cư. Từng người dân lại có hoàn cảnh riêng: tự nguyện, chịu ảnh hưởng tuyên truyền hoặc bị gây sức ép.',
+    points: [
+      'Mục tiêu chính trị: củng cố cơ sở ủng hộ chính quyền Ngô Đình Diệm.',
+      'Động cơ cá nhân: tôn giáo, gia đình, chính trị và sinh kế đan xen.',
+      'Sau khi đến Nam, nhiều người còn thiếu đất canh tác, công cụ sản xuất và chỗ ở ổn định.',
+    ],
+    sourceLabel: 'Báo cáo về định cư người di cư (1955)',
+    sourceUrl: settlementReport,
+  },
+];
