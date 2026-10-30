@@ -1,352 +1,247 @@
 import './style.css';
-import { BUZZER_GROUP_COUNT } from '../classroom-config.js';
 import { createBuzzerClient } from './client.js';
-import { ringBell, startMusic, startClock, stopClock, setMuted, isMuted } from './bell.js';
+import { ringBell, startMusic, setMuted, isMuted } from './audio.js';
 
+const groupIds = [1, 3, 4, 5, 6, 7];
 const params = new URLSearchParams(location.search);
-const presetHost = params.has('host');
-const presetGroup = Number(params.get('nhom'));
-const groupIds = Array.from({ length: BUZZER_GROUP_COUNT }, (_, index) => index + 1);
-
 const app = document.querySelector('#app');
 app.innerHTML = `
   <section id="gate" class="gate">
     <article class="gate-card">
-      <p class="eyebrow">VNR202 · DI CƯ 1954</p>
+      <p class="eyebrow">VNR202 · DI CƯ BẮC – NAM 1954</p>
       <h1>Rung chuông vàng</h1>
-      <p>Chọn nhóm để rung chuông. Máy chiếu dùng màn hình lớn.</p>
-      <div class="gate-actions">
-        <input id="team-name" maxlength="24" placeholder="Tên nhóm (tuỳ chọn)" />
-        <input id="host-name" maxlength="24" placeholder="Tên giảng viên" value="Giảng viên" />
-      </div>
-      <div class="gate-groups" id="group-buttons"></div>
-      <button class="host-enter" id="host-enter" type="button">Mở màn hình lớn</button>
+      <p>Chọn nhóm của bạn. Bấm chuông để xếp hàng trả lời trên màn hình lớn.</p>
+      <label class="field">Tên đội <span>(không bắt buộc)</span><input id="team-name" maxlength="24" autocomplete="organization" placeholder="Ví dụ: Sao Vàng"></label>
+      <div class="gate-groups" id="group-buttons" aria-label="Chọn nhóm tham gia"></div>
+      <p class="gate-note">6 nhóm thi · Mỗi câu đúng 1 điểm<br>Nhóm 2 dẫn chương trình</p>
+      <details id="host-login"><summary>Mở màn hình người dẫn</summary>
+        <form id="host-form">
+          <label class="field">Mã người dẫn<input id="host-key" type="password" autocomplete="off" placeholder="Nhập mã riêng của nhóm 2" required></label>
+          <button class="host-enter" type="submit">Vào màn hình lớn →</button>
+        </form>
+      </details>
+      <p id="gate-error" class="error hidden" role="alert"></p>
+      <p id="gate-status" role="status"></p>
     </article>
   </section>
   <main id="board" class="board hidden">
     <header class="board-top">
-      <p class="brand">Mini game di cư 1954<b>Rung chuông vàng</b></p>
-      <div class="meta">
-        <div class="clock hidden" id="clock"><b id="clock-num">1:00</b><small>phút</small></div>
-        <div>
-          <div id="board-progress">Câu 0 / 15</div>
-          <small id="board-status">Chờ nhóm vào</small>
-        </div>
-        <button class="mute" id="mute" type="button">Tắt tiếng</button>
-      </div>
+      <p class="brand">VNR202 · Di cư 1954<b>Rung chuông vàng</b></p>
+      <div class="meta"><div><strong id="board-progress">Chưa bắt đầu</strong><small id="board-status">Chờ nhóm vào</small></div>
+        <button class="mute" id="mute" type="button">Tắt tiếng</button></div>
     </header>
-    <section class="question-card" id="question-card" aria-live="polite">
-      <p class="kicker" id="question-kicker">MÀN HÌNH LỚN</p>
-      <p id="double-badge" class="double-badge hidden">x2 ĐIỂM</p>
-      <h2 id="question-text">Chờ giảng viên mở câu hỏi</h2>
-      <div id="options" class="options"></div>
-      <p id="explain" class="explain hidden"></p>
-      <p id="idle-copy" class="idle-copy">Mời 5 nhóm vào chỗ bên dưới, rồi bấm Bắt đầu.</p>
-    </section>
-    <div class="controls" id="host-controls">
-      <button id="start" type="button">Bắt đầu</button>
-      <button id="correct" class="good hidden" type="button">Đúng</button>
-      <button id="wrong" class="bad hidden" type="button">Sai</button>
-      <button id="reveal" class="ghost hidden" type="button">Hiện đáp án</button>
-      <button id="next" class="hidden" type="button">Câu tiếp theo</button>
-      <button id="reset" class="ghost" type="button">Chơi lại</button>
+    <div class="play-area">
+      <section class="question-card" aria-live="polite">
+        <p class="kicker" id="question-kicker">SẴN SÀNG VÀO CUỘC</p>
+        <h2 id="question-text">Chờ người dẫn mở câu hỏi</h2>
+        <div id="options" class="options"></div>
+        <p id="explain" class="explain hidden"></p>
+        <p id="idle-copy" class="idle-copy">Mời các nhóm vào chỗ.<br>Người dẫn bấm Bắt đầu khi sẵn sàng.</p>
+      </section>
+      <aside class="queue-panel" aria-label="Thứ tự bấm chuông">
+        <div class="queue-heading"><h2>✋ Hàng chờ</h2><span id="queue-count">0 / 6</span></div>
+        <p class="queue-hint">Bấm trước ở trên · Các nhóm vẫn được bấm tiếp</p>
+        <ol id="queue-list" class="queue-list" aria-live="polite" aria-relevant="additions text"></ol>
+        <p id="queue-empty" class="queue-empty">Chưa có nhóm bấm chuông</p>
+        <p id="attempted" class="attempted"></p>
+      </aside>
     </div>
-    <section class="slots" id="slots"></section>
+    <section class="controls" aria-label="Điều khiển trò chơi">
+      <button data-action="start" id="start" type="button">Bắt đầu</button>
+      <button data-action="correct" id="correct" class="good hidden" type="button">Đúng · +1 điểm</button>
+      <button data-action="wrong" id="wrong" class="bad hidden" type="button">Sai · Mời nhóm tiếp</button>
+      <button data-action="reveal" id="reveal" class="ghost hidden" type="button">Hiện đáp án</button>
+      <button data-action="next" id="next" class="hidden" type="button">Câu tiếp theo →</button>
+      <button data-action="reset" id="reset" class="ghost hidden" type="button">Chơi lại</button>
+    </section>
+    <p id="board-error" class="error hidden" role="alert"></p>
+    <section class="slots" id="slots" aria-label="Điểm các nhóm"></section>
   </main>
   <main id="pad" class="pad hidden">
-    <header class="pad-top">
-      <p class="brand">Nhóm trả lời<b id="pad-name">Nhóm</b></p>
-      <div class="meta"><div id="pad-score">0 điểm</div><small id="pad-progress">Chờ câu hỏi</small></div>
-    </header>
-    <button id="buzz" class="buzz" type="button" disabled>Rung chuông</button>
-    <p id="pad-note" class="pad-note">Chờ giảng viên mở câu</p>
+    <header class="pad-top"><p class="brand">Đội của bạn<b id="pad-name">Nhóm</b></p>
+      <div class="meta"><div><strong id="pad-score">0 điểm</strong><small id="pad-progress">Chờ bắt đầu</small></div></div></header>
+    <div class="pad-center"><p id="pad-position" class="pad-position"></p>
+      <button id="buzz" class="buzz" type="button" disabled>Rung chuông</button></div>
+    <div><p id="pad-note" class="pad-note" role="status" aria-live="polite">Chờ người dẫn mở câu</p>
+      <p id="pad-error" class="error hidden" role="alert"></p><p id="pad-connection" class="connection"></p></div>
   </main>
 `;
 
-document.querySelector('#group-buttons').innerHTML = groupIds.map(id =>
-  `<button type="button" data-group="${id}">Nhóm ${id}</button>`
-).join('');
-
-const letters = ['A', 'B', 'C', 'D'];
-const statusLabel = {
-  empty: 'Trống', ready: 'Đã vào', armed: 'Sẵn sàng', queued: 'Chuông chậm hơn',
-  buzzed: 'Được trả lời', waiting: 'Chờ', out: 'Sai lượt này', answered: 'Đúng', done: 'Hết giờ',
-};
-const phaseLabel = {
-  lobby: 'Chờ nhóm vào', armed: 'Đang mở chuông', locked: 'Tạm dừng · đang trả lời',
-  revealed: 'Đã chốt đáp án', done: 'Hết 15 câu',
-};
-
+const $ = id => document.getElementById(id);
 let state = null;
-let role = null;
-let lastBuzzRound = 0;
-let clockSkew = 0;
+let busy = false;
+let online = false;
 let musicStarted = false;
-const client = createBuzzerClient(handleMessage, updateStatus);
+const client = createBuzzerClient(receive, connection, showError);
+
+for (const id of groupIds) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = `Nhóm ${id}`;
+  button.dataset.group = id;
+  $('group-buttons').append(button);
+}
 
 function show(id) {
-  ['gate', 'board', 'pad'].forEach(key => {
-    document.querySelector(`#${key}`).classList.toggle('hidden', key !== id);
-  });
+  for (const key of ['gate', 'board', 'pad']) $(key).classList.toggle('hidden', key !== id);
 }
 
-function now() {
-  return Date.now() + clockSkew;
+function showError(message, expired = false) {
+  if (expired) { state = null; show('gate'); }
+  const target = !state ? $('gate-error') : state.role === 'host' ? $('board-error') : $('pad-error');
+  target.textContent = message;
+  target.classList.remove('hidden');
 }
 
-function remainingMs(next = state) {
-  if (!next) return 0;
-  if (next.timerPaused || next.phase === 'locked') return Math.max(0, next.remainingMs || 0);
-  if (next.phase !== 'armed' || !next.endsAt) return 0;
-  return Math.max(0, next.endsAt - now());
+function connection(status) {
+  online = status === 'online';
+  const text = online ? 'Đã kết nối' : status === 'connecting' ? 'Đang kết nối…' : 'Mất kết nối · Đang thử lại…';
+  $('pad-connection').textContent = text;
+  $('pad-connection').classList.toggle('offline', !online);
+  $('gate-status').textContent = state ? '' : text;
+  updateButtons();
+  if (state?.role === 'host' && !online) $('board-status').textContent = text;
 }
 
-function waitMs(next = state) {
-  if (!next || next.role !== 'group' || next.phase !== 'armed') return 0;
-  const own = next.groups?.find(group => group.id === next.groupId);
-  if (own?.status === 'out') return 0;
-  return Math.max(0, (next.buzzOpensAt || 0) - now());
+function updateButtons() {
+  $('buzz').disabled = busy || !online || !state?.canBuzz;
+  document.querySelectorAll('[data-action]').forEach(button => { button.disabled = busy || !online; });
+  document.querySelectorAll('#group-buttons button, #host-form button').forEach(button => { button.disabled = busy; });
 }
 
-function liveCanBuzz(next = state) {
-  if (!next || next.role !== 'group' || next.phase !== 'armed') return false;
-  const own = next.groups?.find(group => group.id === next.groupId);
-  if (own?.status === 'out') return false;
-  return now() >= (next.buzzOpensAt || 0);
+function nameFor(id) {
+  return state.groups.find(group => group.id === id)?.name || `Nhóm ${id}`;
 }
 
-function liveStatus(group) {
-  if (state?.phase === 'armed' && (group.status === 'queued' || group.status === 'armed') && now() >= (group.buzzOpensAt || 0)) {
-    return 'armed';
-  }
-  return group.status;
-}
-
-function syncMuteButton() {
-  const mute = document.querySelector('#mute');
-  mute.textContent = isMuted() ? 'Bật tiếng' : 'Tắt tiếng';
-  mute.classList.toggle('is-off', isMuted());
-}
-
-function ensureMusic() {
-  if (role !== 'host' || musicStarted) return;
-  startMusic();
-  musicStarted = true;
-}
-
-function updateStatus(status) {
-  const note = document.querySelector('#pad-note');
-  const boardStatus = document.querySelector('#board-status');
-  if (status === 'offline') {
-    note.classList.add('offline');
-    note.textContent = 'Mất kết nối, đang vào lại…';
-    if (boardStatus) boardStatus.textContent = 'Mất kết nối';
-  } else note.classList.remove('offline');
-}
-
-function renderHost(next) {
-  const question = next.question;
-  const doubled = Boolean(next.doublePoints);
-  document.querySelector('#question-card').classList.toggle('is-double', doubled);
-  document.querySelector('#double-badge').classList.toggle('hidden', !doubled);
-  document.querySelector('#board-progress').textContent = next.phase === 'lobby'
-    ? 'Chưa bắt đầu' : next.phase === 'done' ? 'Đã hết câu'
-      : `Câu ${next.index + 1} / ${next.total}${doubled ? ' · x2' : ''}`;
-  document.querySelector('#board-status').textContent = phaseLabel[next.phase];
-  document.querySelector('#question-kicker').textContent = next.phase === 'locked' && next.buzzedGroup
-    ? `NHÓM ${next.buzzedGroup} ĐƯỢC TRẢ LỜI` : doubled
-      ? 'CÂU NHÂN ĐÔI ĐIỂM' : 'CÂU HỎI TRÊN MÀN HÌNH LỚN';
-  document.querySelector('#idle-copy').classList.toggle('hidden', Boolean(question) || next.phase === 'done');
-  document.querySelector('#question-text').textContent = question?.question
-    || (next.phase === 'done' ? 'Hết 15 câu. Xem điểm các nhóm bên dưới.' : 'Chờ giảng viên mở câu hỏi');
-  const options = document.querySelector('#options');
-  options.replaceChildren(...(question?.options || []).map((text, index) => {
-    const row = document.createElement('div');
-    row.className = `option${question.answer === index ? ' is-correct' : ''}`;
-    row.innerHTML = `<b>${letters[index]}</b><span></span>`;
-    row.querySelector('span').textContent = text;
+function renderQueue() {
+  $('queue-count').textContent = `${state.queue.length} / 6`;
+  $('queue-empty').classList.toggle('hidden', state.queue.length > 0);
+  $('queue-empty').textContent = state.phase === 'open' ? 'Chưa có lượt chờ. Các nhóm chưa trả lời vẫn được bấm.' : 'Chưa có nhóm bấm chuông';
+  $('queue-list').replaceChildren(...state.queue.map((id, index) => {
+    const row = document.createElement('li');
+    row.className = `queue-item${state.activeGroup === id ? ' is-active' : ''}`;
+    const rank = document.createElement('span'); rank.className = 'queue-rank'; rank.textContent = index + 1;
+    const copy = document.createElement('div');
+    const name = document.createElement('strong'); name.textContent = nameFor(id);
+    const note = document.createElement('small');
+    note.textContent = state.phase === 'revealed' ? (state.correctGroup === id ? 'Đúng · +1 điểm' : 'Câu đã chốt')
+      : index === 0 ? 'ĐANG TRẢ LỜI' : `Chờ lượt ${index + 1}`;
+    copy.append(name, note); row.append(rank, copy);
     return row;
   }));
-  const explain = document.querySelector('#explain');
-  explain.textContent = question?.explanation || '';
-  explain.classList.toggle('hidden', !question?.explanation);
-  document.querySelector('#start').classList.toggle('hidden', next.phase !== 'lobby' && next.phase !== 'done');
-  document.querySelector('#correct').classList.toggle('hidden', next.phase !== 'locked');
-  document.querySelector('#wrong').classList.toggle('hidden', next.phase !== 'locked');
-  document.querySelector('#reveal').classList.toggle('hidden', next.phase === 'lobby' || next.phase === 'done' || next.phase === 'revealed');
-  document.querySelector('#next').classList.toggle('hidden', next.phase !== 'revealed');
-  document.querySelector('#next').textContent = next.index + 1 >= next.total ? 'Xem kết quả' : 'Câu tiếp theo';
-  document.querySelector('#reset').classList.toggle('hidden', next.phase === 'lobby');
-  document.querySelector('#slots').replaceChildren(...next.groups.map(group => {
-    const status = liveStatus(group);
-    const slot = document.createElement('article');
-    slot.className = `slot${group.connected ? ' connected' : ''} is-${status}`;
-    slot.innerHTML = `<h3></h3><p class="score"></p><p class="status"></p>`;
-    slot.querySelector('h3').textContent = group.name;
-    slot.querySelector('.score').textContent = `${group.score} điểm`;
-    const delay = status === 'queued' ? Math.max(0, group.buzzOpensAt - now()) : 0;
-    slot.querySelector('.status').textContent = delay > 80
-      ? `Chuông sau ${(delay / 1000).toFixed(1)}s` : (statusLabel[status] || status);
-    return slot;
+  $('attempted').textContent = state.attempted.length ? `Đã trả lời sai: ${state.attempted.map(nameFor).join(', ')}` : '';
+}
+
+function renderHost() {
+  const question = state.question;
+  $('board-progress').textContent = state.phase === 'lobby' ? 'Chưa bắt đầu'
+    : state.phase === 'done' ? 'Đã hoàn thành' : `Câu ${state.index + 1} / ${state.total}`;
+  $('board-status').textContent = { lobby: 'Chờ các nhóm vào', open: 'Chuông đang mở', revealed: 'Đã chốt câu', done: 'Kết thúc trò chơi' }[state.phase];
+  $('question-kicker').textContent = state.activeGroup ? `${nameFor(state.activeGroup)} ĐƯỢC TRẢ LỜI`
+    : state.phase === 'done' ? 'KẾT QUẢ CHUNG CUỘC' : 'MỖI CÂU ĐÚNG · 1 ĐIỂM';
+  $('question-text').textContent = question?.question || (state.phase === 'done' ? `Hoàn thành ${state.total} câu hỏi!` : 'Chờ người dẫn mở câu hỏi');
+  $('idle-copy').classList.toggle('hidden', state.phase !== 'lobby');
+  $('options').replaceChildren(...(question?.options || []).map((text, index) => {
+    const row = document.createElement('div'); row.className = `option${question.answer === index ? ' is-correct' : ''}`;
+    const label = document.createElement('b'); label.textContent = String.fromCharCode(65 + index);
+    const copy = document.createElement('span'); copy.textContent = text;
+    row.append(label, copy); return row;
   }));
-  refreshClock();
+  $('explain').textContent = question?.explanation || '';
+  $('explain').classList.toggle('hidden', !question?.explanation);
+  $('start').classList.toggle('hidden', !['lobby', 'done'].includes(state.phase));
+  for (const id of ['correct', 'wrong']) $(id).classList.toggle('hidden', !state.activeGroup);
+  $('reveal').classList.toggle('hidden', state.phase !== 'open');
+  $('next').classList.toggle('hidden', state.phase !== 'revealed');
+  $('next').textContent = state.index + 1 >= state.total ? 'Xem kết quả →' : 'Câu tiếp theo →';
+  $('reset').classList.toggle('hidden', state.phase === 'lobby');
+  $('slots').replaceChildren(...state.groups.map(group => {
+    const slot = document.createElement('article');
+    slot.className = `slot${group.connected ? ' connected' : ''}${state.activeGroup === group.id ? ' is-buzzed' : ''}${state.attempted.includes(group.id) ? ' is-out' : ''}`;
+    const title = document.createElement('h3'); title.textContent = group.name;
+    const score = document.createElement('p'); score.className = 'score'; score.textContent = `${group.score} điểm`;
+    const status = document.createElement('p'); status.className = 'status';
+    status.textContent = state.attempted.includes(group.id) ? 'Sai câu này' : group.connected ? 'Đã kết nối' : 'Chưa kết nối';
+    slot.append(title, score, status); return slot;
+  }));
+  renderQueue();
 }
 
-function renderPad(next) {
-  document.querySelector('#pad-name').textContent = next.name || `Nhóm ${next.groupId}`;
-  document.querySelector('#pad-score').textContent = `${next.score} điểm`;
-  document.querySelector('#pad-progress').textContent = next.phase === 'lobby'
-    ? 'Chờ bắt đầu' : next.phase === 'done' ? 'Hết câu'
-      : `Câu ${next.index + 1} / ${next.total}${next.doublePoints ? ' · x2' : ''}`;
-  const open = liveCanBuzz(next);
-  const buzz = document.querySelector('#buzz');
-  buzz.disabled = !open;
-  buzz.classList.toggle('is-winner', next.youBuzzed);
-  buzz.textContent = next.youBuzzed ? 'Được trả lời' : open ? 'Rung chuông' : 'Chờ';
-  const note = document.querySelector('#pad-note');
-  const own = next.groups?.find(group => group.id === next.groupId);
-  const wait = waitMs(next);
-  if (next.youBuzzed && next.phase === 'locked') note.textContent = 'Nhóm mình rung trước! Hãy trả lời trên màn hình lớn.';
-  else if (next.phase === 'armed' && open) note.textContent = next.doublePoints
-    ? 'Câu này nhân đôi điểm. Rung chuông nếu nhóm biết đáp án.'
-    : 'Giảng viên đã mở câu. Rung chuông nếu nhóm biết đáp án.';
-  else if (next.phase === 'armed' && own?.status === 'out') note.textContent = 'Nhóm đã trả lời sai câu này. Chờ nhóm khác hoặc câu mới.';
-  else if (next.phase === 'armed' && wait > 80) note.textContent = `Đội đang dẫn điểm, chuông mở chậm hơn một chút. Còn ${(wait / 1000).toFixed(1)}s.`;
-  else if (next.phase === 'armed') note.textContent = 'Chuông đã mở.';
-  else if (next.phase === 'locked') note.textContent = `Nhóm ${next.buzzedGroup} đang trả lời.`;
-  else if (next.phase === 'revealed') note.textContent = next.correctLetter ? `Đáp án: ${next.correctLetter}` : 'Đã chốt câu này.';
-  else if (next.phase === 'done') note.textContent = 'Hết 15 câu.';
-  else note.textContent = 'Chờ giảng viên mở câu.';
+function renderPad() {
+  const own = state.groups.find(group => group.id === state.groupId);
+  $('pad-name').textContent = state.name;
+  $('pad-score').textContent = `${own.score} điểm`;
+  $('pad-progress').textContent = state.phase === 'lobby' ? 'Chờ bắt đầu'
+    : state.phase === 'done' ? 'Đã hoàn thành' : `Câu ${state.index + 1} / ${state.total}`;
+  const active = state.activeGroup === state.groupId;
+  $('buzz').classList.toggle('is-winner', active);
+  $('buzz').textContent = active ? 'Được trả lời' : state.position && state.phase === 'open' ? 'Đã xếp hàng' : 'Rung chuông';
+  $('pad-position').textContent = state.phase === 'open' && state.position ? `Lượt ${state.position} trong hàng chờ` : '';
+  $('pad-note').textContent = state.phase === 'lobby' ? 'Chờ người dẫn bắt đầu.'
+    : state.phase === 'done' ? 'Cảm ơn nhóm đã tham gia! Xem kết quả trên màn hình lớn.'
+    : state.phase === 'revealed' ? (state.correctGroup === state.groupId ? 'Chính xác! Nhóm được cộng 1 điểm.' : `Đáp án: ${state.correctLetter}. Chờ câu tiếp theo.`)
+    : active ? 'Đến lượt nhóm mình! Hãy trả lời người dẫn.'
+    : state.attempted.includes(state.groupId) ? 'Nhóm đã trả lời sai câu này. Chờ câu tiếp theo.'
+    : state.position ? `Đã ghi nhận lượt bấm. Có ${state.position - 1} nhóm ở trước.`
+    : 'Biết đáp án? Bấm chuông để vào hàng chờ!';
 }
 
-function refreshClock() {
-  const clock = document.querySelector('#clock');
-  if (!state || role !== 'host') {
-    clock?.classList.add('hidden');
-    return;
-  }
-  const ms = remainingMs();
-  const seconds = Math.ceil(ms / 1000);
-  const live = state.phase === 'armed' || state.phase === 'locked';
-  clock.classList.toggle('hidden', !live);
-  clock.classList.toggle('urgent', live && seconds <= 15);
-  const minutes = Math.floor(seconds / 60);
-  const rest = String(seconds % 60).padStart(2, '0');
-  document.querySelector('#clock-num').textContent = `${minutes}:${rest}`;
-  const label = clock.querySelector('small');
-  if (label) label.textContent = seconds >= 60 ? 'phút' : 'giây';
-  if (state.phase === 'armed' || state.phase === 'locked') renderLiveLabels();
-}
-
-function renderLiveLabels() {
-  if (!state) return;
-  if (role === 'host') {
-    document.querySelectorAll('#slots .slot').forEach((slot, index) => {
-      const group = state.groups[index];
-      if (!group) return;
-      const status = liveStatus(group);
-      const delay = status === 'queued' ? Math.max(0, group.buzzOpensAt - now()) : 0;
-      slot.classList.remove('is-queued', 'is-armed');
-      if (status === 'queued' || status === 'armed') slot.classList.add(`is-${status}`);
-      const label = slot.querySelector('.status');
-      if (label) {
-        label.textContent = delay > 80
-          ? `Chuông sau ${(delay / 1000).toFixed(1)}s` : (statusLabel[status] || status);
-      }
-    });
-  } else if (state.phase === 'armed') {
-    const own = state.groups?.find(group => group.id === state.groupId);
-    if (own?.status !== 'out') renderPad(state);
-  }
-}
-
-function handleMessage(message) {
-  if (message.type === 'error') {
-    const note = document.querySelector('#pad-note');
-    if (!document.querySelector('#pad').classList.contains('hidden')) note.textContent = message.message;
-    else alert(message.message);
-    return;
-  }
-  if (message.type === 'buzzer_welcome') role = message.role;
-  if (message.type !== 'buzzer_state') return;
+function receive(next) {
   const previous = state;
-  if (typeof message.serverNow === 'number') clockSkew = message.serverNow - Date.now();
-  state = message;
-  if (message.role === 'host') {
-    show('board');
-    renderHost(message);
-    if (message.phase === 'armed') {
-      ensureMusic();
-      startClock(() => remainingMs());
-    } else stopClock();
-  } else {
-    show('pad');
-    renderPad(message);
-    stopClock();
-  }
-  if (message.phase === 'locked' && message.round !== lastBuzzRound && message.buzzedGroup) {
-    lastBuzzRound = message.round;
-    if (previous && previous.phase === 'armed') ringBell();
-  }
+  state = next;
+  show(next.role === 'host' ? 'board' : 'pad');
+  if (next.role === 'host') {
+    renderHost();
+    if (previous && next.phase === 'open' && next.activeGroup && (next.round !== previous.round || next.activeGroup !== previous.activeGroup)) ringBell();
+  } else renderPad();
+  updateButtons();
 }
 
-function join(nextRole, groupId = null) {
-  const teamName = document.querySelector('#team-name').value.trim();
-  const hostName = document.querySelector('#host-name').value.trim();
-  role = nextRole;
-  client.connect({
-    role: nextRole,
-    groupId,
-    name: nextRole === 'host' ? (hostName || 'Giảng viên') : teamName,
-  });
+async function run(action) {
+  if (busy) return;
+  busy = true;
+  document.querySelectorAll('.error').forEach(element => element.classList.add('hidden'));
+  updateButtons();
+  try { await action(); } catch (error) { showError(error.message); }
+  finally { busy = false; updateButtons(); }
 }
 
-document.querySelector('#host-enter').addEventListener('click', () => join('host'));
-document.querySelector('#group-buttons').addEventListener('click', event => {
-  const groupId = Number(event.target.dataset.group);
-  if (groupId) join('group', groupId);
+$('group-buttons').addEventListener('click', event => {
+  const groupId = Number(event.target.closest('[data-group]')?.dataset.group);
+  if (groupIds.includes(groupId)) run(() => client.connect({ role: 'group', groupId, name: $('team-name').value.trim() }));
 });
-document.querySelector('#start').addEventListener('click', () => {
-  client.send({ type: 'start' });
-  try { ensureMusic(); } catch { /* autoplay may be blocked */ }
-});
-document.querySelector('#correct').addEventListener('click', () => client.send({ type: 'correct' }));
-document.querySelector('#wrong').addEventListener('click', () => client.send({ type: 'wrong' }));
-document.querySelector('#reveal').addEventListener('click', () => client.send({ type: 'reveal' }));
-document.querySelector('#next').addEventListener('click', () => client.send({ type: 'next' }));
-document.querySelector('#reset').addEventListener('click', () => client.send({ type: 'reset' }));
-document.querySelector('#mute').addEventListener('click', () => {
-  setMuted(!isMuted());
-  if (!isMuted()) ensureMusic();
-  syncMuteButton();
-});
-document.querySelector('#buzz').addEventListener('pointerdown', event => {
+$('host-form').addEventListener('submit', event => {
   event.preventDefault();
-  if (!document.querySelector('#buzz').disabled) client.send({ type: 'buzz' });
+  run(async () => {
+    await client.connect({ role: 'host', hostKey: $('host-key').value.trim() });
+    $('host-key').value = '';
+  });
 });
 
-window.addEventListener('keydown', event => {
-  if (role !== 'host' || document.querySelector('#board').classList.contains('hidden')) return;
-  if (event.key === 'Enter' && (state?.phase === 'lobby' || state?.phase === 'done')) client.send({ type: 'start' });
-  if (event.key === 'Enter' && state?.phase === 'revealed') client.send({ type: 'next' });
-  if (event.key === 'd' || event.key === 'D') client.send({ type: 'correct' });
-  if (event.key === 's' || event.key === 'S') client.send({ type: 'wrong' });
-  if (event.key === 'm' || event.key === 'M') {
-    setMuted(!isMuted());
-    if (!isMuted()) ensureMusic();
-    syncMuteButton();
-  }
-});
-
-window.addEventListener('pagehide', event => { if (!event.persisted) client.stop(); });
-window.setInterval(refreshClock, 120);
-
-const savedPlayerName = sessionStorage.getItem('vnr202-player-name') || localStorage.getItem('vnr202-player-name');
-if (savedPlayerName) document.querySelector('#team-name').value = savedPlayerName;
-if (presetHost) {
-  const saved = sessionStorage.getItem('vnr202-host-name');
-  if (saved) document.querySelector('#host-name').value = saved;
-  join('host');
-} else if (groupIds.includes(presetGroup)) {
-  join('group', presetGroup);
+async function command(action) {
+  if (!state || !online || busy) return;
+  if (action === 'reset' && !confirm('Chơi lại từ đầu và xóa điểm của cả 6 nhóm?')) return;
+  if (state.role === 'host' && !musicStarted && action === 'start') { startMusic(); musicStarted = true; }
+  const { round, activeGroup } = state;
+  await run(() => client.send(action, round, activeGroup));
 }
+for (const button of document.querySelectorAll('[data-action]')) button.addEventListener('click', () => command(button.dataset.action));
+$('buzz').addEventListener('click', () => { if (state?.canBuzz) command('buzz'); });
+$('mute').addEventListener('click', () => {
+  setMuted(!isMuted());
+  if (!isMuted() && !musicStarted) { startMusic(); musicStarted = true; }
+  $('mute').textContent = isMuted() ? 'Bật tiếng' : 'Tắt tiếng';
+});
+window.addEventListener('keydown', event => {
+  if (state?.role !== 'host' || /INPUT|TEXTAREA|BUTTON/.test(event.target.tagName) || event.repeat) return;
+  const action = event.key.toLowerCase() === 'd' ? 'correct' : event.key.toLowerCase() === 's' ? 'wrong'
+    : event.key === 'Enter' ? (state.phase === 'revealed' ? 'next' : ['lobby', 'done'].includes(state.phase) ? 'start' : null) : null;
+  if (action) { event.preventDefault(); command(action); }
+});
+window.addEventListener('pagehide', event => { if (!event.persisted) client.stop(); });
+$('host-login').open = params.has('host');
+run(async () => {
+  if (await client.resume()) return;
+  const groupId = Number(params.get('nhom'));
+  if (groupIds.includes(groupId)) await client.connect({ role: 'group', groupId });
+});

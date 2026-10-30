@@ -3,13 +3,7 @@ dist/
 .env
 .env.*
 !.env.example
+*.local.txt
+.vercel/
 .chrome-preview/
 .edge-preview/
-*-preview.png
-
-.vercel
-.env*
-.simulated-students.json
-.simulated-students.stop
-simulated-students.log
-simulated-students-error.log

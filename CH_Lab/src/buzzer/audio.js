@@ -2,11 +2,9 @@ const pentatonic = [261.63, 293.66, 329.63, 392, 440, 523.25, 392, 329.63];
 
 let context = null;
 let musicTimer = null;
-let clockTimer = null;
 let musicGain = null;
 let muted = false;
 let musicOn = false;
-let lastTickSecond = null;
 
 function audioContext() {
   try {
@@ -94,32 +92,4 @@ export function ringBell() {
     oscillator.start(now);
     oscillator.stop(now + 1.05);
   });
-}
-
-function tick(urgent) {
-  tone(urgent ? 980 : 620, urgent ? 0.09 : 0.07, 'square', urgent ? 0.08 : 0.045);
-  window.setTimeout(() => tone(urgent ? 720 : 420, 0.08, 'square', urgent ? 0.06 : 0.03), 90);
-}
-
-export function startClock(getRemainingMs) {
-  stopClock();
-  lastTickSecond = null;
-  const pulse = () => {
-    const remaining = Math.max(0, Math.ceil(getRemainingMs() / 1000));
-    if (remaining === lastTickSecond) return;
-    lastTickSecond = remaining;
-    if (remaining <= 0) {
-      tone(180, 0.35, 'sine', 0.16);
-      stopClock();
-      return;
-    }
-    tick(remaining <= 5);
-  };
-  pulse();
-  clockTimer = window.setInterval(pulse, 120);
-}
-
-export function stopClock() {
-  if (clockTimer) { window.clearInterval(clockTimer); clockTimer = null; }
-  lastTickSecond = null;
 }
